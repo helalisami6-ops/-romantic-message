@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#fff0f6">
+<title>رسالة من القلب إليك</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body {
+  margin:0; min-height:100vh; overflow-x:hidden;
+  display:flex; align-items:center; justify-content:center;
+  padding:24px; font-family: Tahoma, Arial, sans-serif;
+  background: radial-gradient(circle at top, #fff 0, #ffe5f0 48%, #ffd0e3 100%);
+  color:#8e315d;
+}
+.hearts { position:fixed; inset:0; pointer-events:none; overflow:hidden; }
+.heart { position:absolute; bottom:-50px; color:#f18ab5; opacity:.45;
+  animation: float 12s linear infinite; font-size:24px; }
+.heart:nth-child(1){left:8%;animation-delay:0s;font-size:22px}
+.heart:nth-child(2){left:25%;animation-delay:3s;font-size:34px}
+.heart:nth-child(3){left:48%;animation-delay:1s;font-size:18px}
+.heart:nth-child(4){left:70%;animation-delay:5s;font-size:30px}
+.heart:nth-child(5){left:90%;animation-delay:2s;font-size:25px}
+@keyframes float { to { transform:translateY(-115vh) rotate(25deg); opacity:0; } }
+.card {
+  position:relative; width:min(100%,440px); padding:34px 26px;
+  border:1px solid rgba(255,255,255,.9); border-radius:28px;
+  background:rgba(255,255,255,.82); box-shadow:0 18px 55px rgba(177,75,119,.16);
+  text-align:center; backdrop-filter:blur(8px);
+}
+h1 { margin:0 0 12px; font-size:30px; color:#c0447d; }
+.subtitle { margin:0 0 24px; line-height:1.9; color:#a34c75; }
+.heart-mark { font-size:42px; margin-bottom:10px; }
+label { display:block; margin:0 0 10px; font-weight:bold; }
+input {
+  width:100%; padding:15px 16px; border:1px solid #efb2cd; border-radius:14px;
+  background:#fffafd; color:#71314f; font-size:18px; text-align:center;
+  outline:none; letter-spacing:3px;
+}
+input:focus { border-color:#df70a2; box-shadow:0 0 0 3px #fbe0eb; }
+button {
+  width:100%; margin-top:14px; padding:15px; border:0; border-radius:14px;
+  background:linear-gradient(135deg,#ed8ab5,#d95791); color:white;
+  font-size:17px; font-weight:bold; cursor:pointer;
+}
+button:disabled { opacity:.6; cursor:wait; }
+#status { min-height:28px; margin-top:14px; font-size:14px; line-height:1.7; }
+audio { width:100%; margin-top:16px; }
+.footer { margin-top:22px; font-size:13px; color:#c06b91; }
+</style>
+</head>
+<body>
+<div class="hearts" aria-hidden="true">
+  <span class="heart">♥</span><span class="heart">♥</span><span class="heart">♥</span>
+  <span class="heart">♥</span><span class="heart">♥</span>
+</div>
+<main class="card">
+  <div class="heart-mark">💗</div>
+  <h1>مرحباً حبيبتي شوق</h1>
+  <p class="subtitle">هناك رسالة خاصة تنتظرك…<br>صوتٌ من القلب إليك بكل حب.</p>
+  <form id="unlockForm">
+    <label for="password">أدخل كلمة المرور</label>
+    <input id="password" type="password" inputmode="numeric" autocomplete="off"
+      placeholder="••••••" required>
+    <button id="unlockButton" type="submit">افتح رسالتي 💕</button>
+  </form>
+  <div id="status" role="status" aria-live="polite"></div>
+  <audio id="player" controls hidden></audio>
+  <div class="footer">صُنعت هذه الرسالة بكل الحب من أجلك ❤️</div>
+</main>
+<script>
+const SALT = Uint8Array.from(atob("yl0Y6YdHB7i7kNILlT59GA=="), c => c.charCodeAt(0));
+const IV = Uint8Array.from(atob("GhXTZZnfonDYMuu2"), c => c.charCodeAt(0));
+const form = document.getElementById('unlockForm');
+const input = document.getElementById('password');
+const button = document.getElementById('unlockButton');
+const status = document.getElementById('status');
+const player = document.getElementById('player');
+
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  button.disabled = true;
+  status.textContent = 'لحظة من فضلك… 💗';
+  player.hidden = true;
+  try {
+    const material = await crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(input.value), 'PBKDF2', false, ['deriveKey']
+    );
+    const key = await crypto.subtle.deriveKey(
+      {name:'PBKDF2', salt:SALT, iterations:600000, hash:'SHA-256'},
+      material, {name:'AES-GCM', length:256}, false, ['decrypt']
+    );
+    const response = await fetch('./audio.enc', {cache:'no-store'});
+    if (!response.ok) throw new Error('تعذّر تحميل الملف الصوتي.');
+    const encrypted = await response.arrayBuffer();
+    const decrypted = await crypto.subtle.decrypt({name:'AES-GCM', iv:IV}, key, encrypted);
+    const blob = new Blob([decrypted], {type:'audio/mp4'});
+    if (player.src) URL.revokeObjectURL(player.src);
+    player.src = URL.createObjectURL(blob);
+    player.hidden = false;
+    status.textContent = 'تم فتح رسالتك… استمع إليها بقلبك 💞';
+    input.value = '';
+  } catch (error) {
+    status.textContent = 'كلمة المرور غير صحيحة، حاول مرة أخرى 💗';
+  } finally {
+    button.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
